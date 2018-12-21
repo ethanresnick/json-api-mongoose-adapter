@@ -1,10 +1,13 @@
 // This file contains utility functions used by the Mongoose adapter that
 // aren't part of the class's public interface. Don't use them in your own
 // code, as their APIs are subject to change.
-import APIError from "../../types/APIError";
-import Resource from "../../types/Resource";
-import * as Errors from "../../util/errors";
-import { FieldExpression, Identifier } from "../../types/index";
+import {
+  Error as APIError,
+  Resource,
+  FieldExpression,
+  Identifier
+} from "json-api";
+import * as Errors from "json-api/build/src/util/errors";
 
 // tslint:disable-next-line no-var-requires no-submodule-imports
 const MongooseError = require("mongoose/lib/error");

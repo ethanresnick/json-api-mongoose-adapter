@@ -1,10 +1,16 @@
 import { Model, Document } from "mongoose";
-import Data from "../../../types/Generic/Data";
-import Resource, { ResourceWithTypePath } from "../../../types/Resource";
-import ResourceIdentifier from "../../../types/ResourceIdentifier";
-import Relationship from "../../../types/Relationship";
-import { deleteNested } from "../../../util/misc";
-import { StrictDictMap } from "../../../types";
+
+import {
+  Data,
+  Resource,
+  ResourceIdentifier,
+  Relationship,
+} from 'json-api';
+
+import { ResourceWithTypePath } from 'json-api/build/src/types/Resource';
+import { deleteNested } from "json-api/build/src/util/misc";
+import { StrictDictMap } from "json-api/build/src/types";
+
 import { getTypePath } from "./subtyping";
 import {
   getReferencePaths,

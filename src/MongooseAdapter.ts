@@ -1,42 +1,61 @@
-import R = require("ramda");
 // Import mongo just for one of its type declarations (not imported at runtime).
 // tslint:disable-next-line no-implicit-dependencies
 import mongodb = require("mongodb");
 import mongoose = require("mongoose");
-import pluralize = require("pluralize");
+
+import * as pluralize from "pluralize";
+import * as R from "ramda";
 
 import { Model, Document } from "mongoose";
 
-import { AndExpression, SupportedOperators, ExpressionSort } from "../../types/";
 import {
-  isId as isIdentifier,
-  isFieldExpression
-} from '../../steps/pre-query/parse-query-params';
-import { partition, setDifference, reduceToObject } from "../../util/misc";
-import { values as objectValues } from "../../util/objectValueEntries";
+  Data,
+  ResourceIdentifier,
+  Relationship,
+  isFieldExpression,
+  CreateQuery,
+  FindQuery,
+  DeleteQuery,
+  UpdateQuery,
+  AddToRelationshipQuery,
+  RemoveFromRelationshipQuery,
+  AndExpression,
+  ExpressionSort
+} from "json-api";
+
+import * as Errors from 'json-api/build/src/util/errors';
+import { ResourceWithTypePath } from 'json-api/build/src/types/Resource';
+import FieldDocumentation from 'json-api/build/src/types/Documentation/Field';
+import FieldTypeDocumentation from 'json-api/build/src/types/Documentation/FieldType';
+import RelationshipTypeDocumentation from 'json-api/build/src/types/Documentation/RelationshipType';
+import { SupportedOperators } from 'json-api/build/src/types';
+import { partition, setDifference, reduceToObject } from 'json-api/build/src/util/misc';
+import { isId as isIdentifier } from 'json-api/build/src/steps/pre-query/parse-query-params';
+import { values as objectValues } from "json-api/build/src/util/objectValueEntries";
+import { getTypeName } from "json-api/build/src/util/naming-conventions";
+
 import {
-  getReferencePaths, getReferencedModelName,
-  getDiscriminatorKey, getVersionKey, getMetaKeys
+  Adapter,
+  TypeIdMapOf,
+  TypeInfo,
+  FindReturning,
+  CreationReturning,
+  UpdateReturning,
+  DeletionReturning,
+  RelationshipUpdateReturning,
+  ReturnedResource
+} from 'json-api/build/src/db-adapters/AdapterInterface';
+
+import {
+  getReferencePaths,
+  getReferencedModelName,
+  getDiscriminatorKey,
+  getVersionKey,
+  getMetaKeys
 } from './utils/schema';
 import { getTypePath } from "./utils/subtyping";
 import docToResource from "./utils/doc-to-resource";
-import { getTypeName } from "../../util/naming-conventions";
 import * as util from "./lib";
-import * as Errors from '../../util/errors';
-import Data from "../../types/Generic/Data";
-import { ResourceWithTypePath } from "../../types/Resource";
-import ResourceIdentifier from "../../types/ResourceIdentifier";
-import Relationship from '../../types/Relationship';
-import FieldDocumentation from "../../types/Documentation/Field";
-import FieldTypeDocumentation from "../../types/Documentation/FieldType";
-import RelationshipTypeDocumentation from "../../types/Documentation/RelationshipType";
-import { Adapter, TypeInfo, TypeIdMapOf, ReturnedResource } from "../AdapterInterface";
-import CreateQuery from "../../types/Query/CreateQuery";
-import FindQuery from "../../types/Query/FindQuery";
-import DeleteQuery from "../../types/Query/DeleteQuery";
-import UpdateQuery from "../../types/Query/UpdateQuery";
-import AddToRelationshipQuery from "../../types/Query/AddToRelationshipQuery";
-import RemoveFromRelationshipQuery from "../../types/Query/RemoveFromRelationshipQuery";
 
 /**
  * Whether a field expression argument represents a [number, number] tuple.
@@ -102,7 +121,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
    * and the size of the full collection, if the primary resources represent
    * a paginated view of the collection.
    */
-  async find(query: FindQuery) {
+  async find(query: FindQuery): Promise<FindReturning> {
     const {
       type,
       populates: includePaths,
@@ -287,7 +306,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
    * Returns a Promise that fulfills with the created Resource. The Promise
    * may also reject with an error if creation failed or was unsupported.
    */
-  async create(query: CreateQuery) {
+  async create(query: CreateQuery): Promise<CreationReturning> {
     const { records: resourceData } = query;
     const getSmallestSubType = (it: ResourceWithTypePath) => it.typePath[0];
     const setIdWithGenerator =
@@ -327,7 +346,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       }
 
       return model.create(docObjects)
-        .catch(e => util.errorHandler(e, { type })) as Promise<mongoose.Document[]>;
+        .catch(e => util.errorHandler(e, { type })) as Promise<Document[]>;
     });
 
     return Promise.all(creationPromises).then((docArrays) => {
@@ -344,7 +363,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
 
   /**
    */
-  async update(query: UpdateQuery) {
+  async update(query: UpdateQuery): Promise<UpdateReturning> {
     const { type: parentType, patch } = query;
     const parentModel = this.getModel(parentType);
 
@@ -450,7 +469,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     // (I.e., every changeset was valid).
     return {
       updated: await singleDocUpdateQueries.flatMapAsync(async ([docUpdateQuery]) => {
-        const doc: mongoose.Document =
+        const doc: Document =
           await (docUpdateQuery.exec().catch(e => {
             util.errorHandler(e, {
               type: <string>this.modelNamesToTypeNames[(docUpdateQuery as any).model.modelName],
@@ -467,7 +486,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     };
   }
 
-  async delete(query: DeleteQuery) {
+  async delete(query: DeleteQuery): Promise<DeletionReturning> {
     // Delete queries in theory let users delete resources that match arbitrary
     // criteria. Atm, though, json-api only supports delete by id(s). And, below,
     // we assume that ids are the only criteria in use, e.g., when we check the
@@ -504,7 +523,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       : BaseModel[mode](mongofiedFilters);
 
     const docsToDelete = await queryBuilder.exec().then((docOrDocsOrNull) => {
-      return Data.fromJSON<mongoose.Document>(docOrDocsOrNull);
+      return Data.fromJSON<Document>(docOrDocsOrNull);
     }, util.errorHandler);
 
     // Now, we verify all the type paths.
@@ -541,14 +560,14 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
    * relationship. It doesn't do a find-then-save, so some mongoose hooks may not
    * run. But validation and the update query hooks will work.
    */
-  async addToRelationship(query: AddToRelationshipQuery) {
+  async addToRelationship(query: AddToRelationshipQuery): Promise<RelationshipUpdateReturning> {
     return this.updateRelationship(query);
   }
 
   /**
    * Like @addToRelationship, but removes the provided linkage.
    */
-  async removeFromRelationship(query: RemoveFromRelationshipQuery) {
+  async removeFromRelationship(query: RemoveFromRelationshipQuery): Promise<RelationshipUpdateReturning> {
     return this.updateRelationship(query);
   }
 
@@ -735,7 +754,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
    *
    * @param {object} models A model name => model dictionary
    * @param {object} modelNamesToTypeNames A model name => type name dictionary
-   * @param {null | mongoose.Document | mongoose.Document[]} docs The docs to
+   * @param {null | Document | Document[]} docs The docs to
    *   turn into a Data<Resource>
    * @param {boolean} isPlural Whether the result is not conceptually singular.
    * @param {object} fields
@@ -743,7 +762,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
   static docsToResourceData(
     models: any,
     modelNamesToTypeNames,
-    docs: null | mongoose.Document | mongoose.Document[],
+    docs: null | Document | Document[],
     isPlural: boolean,
     fields?: object
   ) {
@@ -764,7 +783,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
   }
 
   static getStandardizedSchema(
-    model: mongoose.Model<any>,
+    model: Model<any>,
     pluralizer: typeof pluralize.plural = pluralize.plural.bind(pluralize)
   ) {
     const versionKey = getVersionKey(model);
