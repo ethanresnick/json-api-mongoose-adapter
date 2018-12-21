@@ -1,0 +1,27 @@
+{
+  "name": "@json-api/mongoose-adapter",
+  "version": "1.0.0",
+  "description": "An adapter for using the json-api library with MongoDB",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "NODE_ENV=test mocha --compilers ts:ts-node/register --recursive test/unit/ test/integration/ --full-trace --check-leaks"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ethanresnick/json-api-mongoose-adapter.git"
+  },
+  "author": {
+    "name": "Ethan Resnick",
+    "email": "ethan.resnick@gmail.com"
+  },
+  "license": "LGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/ethanresnick/json-api-mongoose-adapter/issues"
+  },
+  "homepage": "https://github.com/ethanresnick/json-api-mongoose-adapter#readme",
+  "devDependencies": {
+    "mocha": "^5.2.0",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.2.2"
+  }
+}
