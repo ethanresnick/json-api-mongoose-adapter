@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { AddToRelationshipQuery, ResourceIdentifier } from 'json-api';
+import { AddToRelationshipQueryOptions } from 'json-api/build/src/types/Query/AddToRelationshipQuery';
 
 import '../../support/models';
 import * as mongoose from 'mongoose';
@@ -11,11 +12,10 @@ import fixtures, {
   PERSON_1_ID,
   PERSON_2_ID
 } from './add-to-relationship.fixtures';
-import { AddToRelationshipQueryOptions } from 'json-api/build/src/types/Query/AddToRelationshipQuery';
 
 const { Organization } = mongoose.models;
 
-describe("Partially modifying a relationship at a relationship endpoint", () => {
+describe("Adding to a relationship at a relationship endpoint", () => {
   let adapter: MongooseAdapter;
 
   before(() => {
