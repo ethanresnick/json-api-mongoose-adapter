@@ -3,11 +3,11 @@
 // code, as their APIs are subject to change.
 import {
   Error as APIError,
-  Resource,
-  FieldExpression,
-  Identifier
+  Resource
 } from "json-api";
+
 import * as Errors from "json-api/build/src/util/errors";
+import { FieldExpression, Identifier } from "json-api/build/src/types";
 
 // tslint:disable-next-line no-var-requires no-submodule-imports
 const MongooseError = require("mongoose/lib/error");
