@@ -11,6 +11,7 @@ import fixtures, {
   PERSON_1_ID,
   PERSON_2_ID
 } from './add-to-relationship.fixtures';
+import { AddToRelationshipQueryOptions } from 'json-api/build/src/types/Query/AddToRelationshipQuery';
 
 const { Organization } = mongoose.models;
 
@@ -19,6 +20,29 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
 
   before(() => {
     adapter = new MongooseAdapter(mongoose.models);
+  });
+
+  const addToRel = async (linkage: AddToRelationshipQueryOptions['linkage']) => {
+    const query = addToRelQuery(linkage);
+
+    const {
+      before: beforeRel,
+      after: afterRel
+    } = await adapter.addToRelationship(query);
+
+    const pre = beforeRel ? <any[]>beforeRel.toJSON({}).data : [];
+    const post = afterRel ? <any[]>afterRel.toJSON({}).data : [];
+
+    return { pre, post };
+  }
+
+  const addToRelQuery = (linkage: AddToRelationshipQueryOptions['linkage']) => new AddToRelationshipQuery({
+    type: 'organizations',
+    id: ORG_1_ID,
+    relationshipName: 'liaisons',
+    returning: () => ({}),
+    catch: () => ({}),
+    linkage
   });
 
   // const modifyRelationship = (method, linkage, url) => {
@@ -49,49 +73,33 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
 
   describe("Adding to a to-many relationship at a relationship endpoint", () => {
     describe("Adding a new value", () => {
-      let pre: any[];
-      let post: any[];
+      let results;
 
       before(() => clearDatabase());
       before(() => loadFixtures(fixtures));
 
       before(async () => {
-        const query = new AddToRelationshipQuery({
-          type: 'organizations',
-          id: ORG_1_ID,
-          relationshipName: 'liaisons',
-          returning: () => ({}),
-          catch: () => ({}),
-          linkage: [
-            new ResourceIdentifier('people', PERSON_2_ID)
-          ]
-        });
-
-        const {
-          before: beforeRel,
-          after: afterRel
-        } = await adapter.addToRelationship(query);
-
-        pre = beforeRel ? <any[]>beforeRel.toJSON({}).data : [];
-        post = afterRel ? <any[]>afterRel.toJSON({}).data : [];
+        results = await addToRel([
+          new ResourceIdentifier('people', PERSON_2_ID)
+        ]);
       });
 
       it("returns pre and post states with new linkage added", () => {
-        expect(pre).to.have.lengthOf(1);
-        expect(post).to.have.lengthOf(2);
+        expect(results.pre).to.have.lengthOf(1);
+        expect(results.post).to.have.lengthOf(2);
       });
 
       it("returns the new linkage", () => {
-        const newLinkage = post.find(
-          candidate => !pre.find(existing => existing.id === candidate.id)
+        const newLinkage = results.post.find(
+          candidate => !results.pre.find(existing => existing.id === candidate.id)
         );
 
         expect(newLinkage.id).equals(PERSON_2_ID);
       });
 
       it("gives all relationship data the correct linkage type", () => {
-        expect(pre.every(({ type }) => type === 'people')).to.be.ok;
-        expect(post.every(({ type }) => type === 'people')).to.be.ok;
+        expect(results.pre.every(({ type }) => type === 'people')).to.be.ok;
+        expect(results.post.every(({ type }) => type === 'people')).to.be.ok;
       });
 
       it('saves the new linkage to the database', async () => {
@@ -105,40 +113,24 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
     });
 
     describe("Re-adding an existing value", () => {
-      let pre: any[];
-      let post: any[];
+      let results;
 
       before(() => clearDatabase());
       before(() => loadFixtures(fixtures));
 
       before(async () => {
-        const query = new AddToRelationshipQuery({
-          type: 'organizations',
-          id: ORG_1_ID,
-          relationshipName: 'liaisons',
-          returning: () => ({}),
-          catch: () => ({}),
-          linkage: [
-            new ResourceIdentifier('people', PERSON_1_ID)
-          ]
-        });
-
-        const {
-          before: beforeRel,
-          after: afterRel
-        } = await adapter.addToRelationship(query);
-
-        pre = beforeRel ? <any[]>beforeRel.toJSON({}).data : [];
-        post = afterRel ? <any[]>afterRel.toJSON({}).data : [];
+        results = await addToRel([
+          new ResourceIdentifier('people', PERSON_1_ID)
+        ]);
       });
 
       it("returns matching pre and post states", () => {
-        expect(pre).to.deep.equal(post);
+        expect(results.pre).to.deep.equal(results.post);
       });
 
       it("gives all relationship data the correct linkage type", () => {
-        expect(pre.every(({ type }) => type === 'people')).to.be.ok;
-        expect(post.every(({ type }) => type === 'people')).to.be.ok;
+        expect(results.pre.every(({ type }) => type === 'people')).to.be.ok;
+        expect(results.post.every(({ type }) => type === 'people')).to.be.ok;
       });
 
       it('does not change the linkage in the database', async () => {
@@ -152,50 +144,34 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
     });
 
     describe("Adding the same linkage multiple times in the same query", () => {
-      let pre: any[];
-      let post: any[];
+      let results;
 
       before(() => clearDatabase());
       before(() => loadFixtures(fixtures));
 
       before(async () => {
-        const query = new AddToRelationshipQuery({
-          type: 'organizations',
-          id: ORG_1_ID,
-          relationshipName: 'liaisons',
-          returning: () => ({}),
-          catch: () => ({}),
-          linkage: [
-            new ResourceIdentifier('people', PERSON_2_ID),
-            new ResourceIdentifier('people', PERSON_2_ID)
-          ]
-        });
-
-        const {
-          before: beforeRel,
-          after: afterRel
-        } = await adapter.addToRelationship(query);
-
-        pre = beforeRel ? <any[]>beforeRel.toJSON({}).data : [];
-        post = afterRel ? <any[]>afterRel.toJSON({}).data : [];
+        results = await addToRel([
+          new ResourceIdentifier('people', PERSON_2_ID),
+          new ResourceIdentifier('people', PERSON_2_ID)
+        ]);
       });
 
       it("returns pre and post states with only one copy of the linkage added", () => {
-        expect(pre).to.have.lengthOf(1);
-        expect(post).to.have.lengthOf(2);
+        expect(results.pre).to.have.lengthOf(1);
+        expect(results.post).to.have.lengthOf(2);
       });
 
       it("returns the new linkage", () => {
-        const newLinkage = post.find(
-          candidate => !pre.find(existing => existing.id === candidate.id)
+        const newLinkage = results.post.find(
+          candidate => !results.pre.find(existing => existing.id === candidate.id)
         );
 
         expect(newLinkage.id).equals(PERSON_2_ID);
       });
 
       it("gives all relationship data the correct linkage type", () => {
-        expect(pre.every(({ type }) => type === 'people')).to.be.ok;
-        expect(post.every(({ type }) => type === 'people')).to.be.ok;
+        expect(results.pre.every(({ type }) => type === 'people')).to.be.ok;
+        expect(results.post.every(({ type }) => type === 'people')).to.be.ok;
       });
 
       it('saves the new linkage to the database', async () => {
@@ -209,38 +185,22 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
     });
 
     describe("Providing an empty linkage array", () => {
-      let pre: any[];
-      let post: any[];
+      let results;
 
       before(() => clearDatabase());
       before(() => loadFixtures(fixtures));
 
       before(async () => {
-        const query = new AddToRelationshipQuery({
-          type: 'organizations',
-          id: ORG_1_ID,
-          relationshipName: 'liaisons',
-          returning: () => ({}),
-          catch: () => ({}),
-          linkage: []
-        });
-
-        const {
-          before: beforeRel,
-          after: afterRel
-        } = await adapter.addToRelationship(query);
-
-        pre = beforeRel ? <any[]>beforeRel.toJSON({}).data : [];
-        post = afterRel ? <any[]>afterRel.toJSON({}).data : [];
+        results = await addToRel([]);
       });
 
       it("returns matching pre and post states", () => {
-        expect(pre).to.deep.equal(post);
+        expect(results.pre).to.deep.equal(results.post);
       });
 
       it("gives all relationship data the correct linkage type", () => {
-        expect(pre.every(({ type }) => type === 'people')).to.be.ok;
-        expect(post.every(({ type }) => type === 'people')).to.be.ok;
+        expect(results.pre.every(({ type }) => type === 'people')).to.be.ok;
+        expect(results.post.every(({ type }) => type === 'people')).to.be.ok;
       });
 
       it('does not change the linkage in the database', async () => {
