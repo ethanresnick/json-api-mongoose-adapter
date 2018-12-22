@@ -22,44 +22,44 @@ describe("Adding to a relationship at a relationship endpoint", () => {
     adapter = new MongooseAdapter(mongoose.models);
   });
 
-  const addToRel = async (linkage: AddToRelationshipQueryOptions['linkage']) => {
-    const query = addToRelQuery(linkage);
+  describe("To-many relationship", () => {
+    const addToRel = async (linkage: AddToRelationshipQueryOptions['linkage']) => {
+      const query = addToRelQuery(linkage);
 
-    const {
-      before: beforeRel,
-      after: afterRel
-    } = await adapter.addToRelationship(query);
+      const {
+        before: beforeRel,
+        after: afterRel
+      } = await adapter.addToRelationship(query);
 
-    const pre = beforeRel ? <any[]>beforeRel.toJSON({}).data : [];
-    const post = afterRel ? <any[]>afterRel.toJSON({}).data : [];
+      const pre = beforeRel ? <any[]>beforeRel.toJSON({}).data : [];
+      const post = afterRel ? <any[]>afterRel.toJSON({}).data : [];
 
-    return { pre, post };
-  };
+      return { pre, post };
+    };
 
-  const addToRelQuery = (linkage: AddToRelationshipQueryOptions['linkage']) => new AddToRelationshipQuery({
-    type: 'organizations',
-    id: ORG_1_ID,
-    relationshipName: 'liaisons',
-    returning: () => ({}),
-    catch: () => ({}),
-    linkage
-  });
+    const addToRelQuery = (linkage: AddToRelationshipQueryOptions['linkage']) => new AddToRelationshipQuery({
+      type: 'organizations',
+      id: ORG_1_ID,
+      relationshipName: 'liaisons',
+      returning: () => ({}),
+      catch: () => ({}),
+      linkage
+    });
 
-  const checkSavedLiaisons = async (people: string[]) => {
-    const org = await Organization
-      .findById(ORG_1_ID)
-      .select('liaisons');
+    const checkSavedLiaisons = async (people: string[]) => {
+      const org = await Organization
+        .findById(ORG_1_ID)
+        .select('liaisons');
 
-    const sortedActual = org.liaisons
-      .map(l => l.toString())
-      .sort();
+      const sortedActual = org.liaisons
+        .map(l => l.toString())
+        .sort();
 
-    const sortedExpected = people.sort();
+      const sortedExpected = people.sort();
 
-    expect(sortedActual).to.deep.equal(sortedExpected);
-  };
+      expect(sortedActual).to.deep.equal(sortedExpected);
+    };
 
-  describe("Adding to a to-many relationship at a relationship endpoint", () => {
     describe("Adding a new value", () => {
       let results;
 
@@ -180,5 +180,14 @@ describe("Adding to a relationship at a relationship endpoint", () => {
         await checkSavedLiaisons([ PERSON_1_ID ]);
       });
     });
+  });
+
+  describe("To-one relationship", () => {
+    // TODO: implementing this requires adapters to provide more information
+    // the library about the cardinality of model relationships. Rather than
+    // hacking support for that onto the existing adapter interface, I'll implement
+    // this when I clean up the general division of labor between the adapter
+    // and the resource type descriptions.
+    it.skip("should 405");
   });
 });
