@@ -34,7 +34,7 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
     const post = afterRel ? <any[]>afterRel.toJSON({}).data : [];
 
     return { pre, post };
-  }
+  };
 
   const addToRelQuery = (linkage: AddToRelationshipQueryOptions['linkage']) => new AddToRelationshipQuery({
     type: 'organizations',
@@ -44,6 +44,20 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
     catch: () => ({}),
     linkage
   });
+
+  const checkSavedLiaisons = async (people: string[]) => {
+    const org = await Organization
+      .findById(ORG_1_ID)
+      .select('liaisons');
+
+    const sortedActual = org.liaisons
+      .map(l => l.toString())
+      .sort();
+
+    const sortedExpected = people.sort();
+
+    expect(sortedActual).to.deep.equal(sortedExpected);
+  };
 
   // const modifyRelationship = (method, linkage, url) => {
   //   return Agent.request(method, url)
@@ -103,12 +117,7 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
       });
 
       it('saves the new linkage to the database', async () => {
-        const org = await Organization
-          .findById(ORG_1_ID)
-          .select('liaisons');
-
-        expect(org.liaisons).to.have.lengthOf(2);
-        expect(org.liaisons).to.include(PERSON_2_ID);
+        await checkSavedLiaisons([ PERSON_1_ID, PERSON_2_ID ]);
       });
     });
 
@@ -134,12 +143,7 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
       });
 
       it('does not change the linkage in the database', async () => {
-        const org = await Organization
-          .findById(ORG_1_ID)
-          .select('liaisons');
-
-        expect(org.liaisons).to.have.lengthOf(1);
-        expect(org.liaisons[0].toString()).to.equal(PERSON_1_ID);
+        await checkSavedLiaisons([ PERSON_1_ID ]);
       });
     });
 
@@ -175,12 +179,7 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
       });
 
       it('saves the new linkage to the database', async () => {
-        const org = await Organization
-          .findById(ORG_1_ID)
-          .select('liaisons');
-
-        expect(org.liaisons).to.have.lengthOf(2);
-        expect(org.liaisons).to.include(PERSON_2_ID);
+        await checkSavedLiaisons([ PERSON_1_ID, PERSON_2_ID ]);
       });
     });
 
@@ -204,11 +203,7 @@ describe("Partially modifying a relationship at a relationship endpoint", () => 
       });
 
       it('does not change the linkage in the database', async () => {
-        const org = await Organization
-          .findById(ORG_1_ID)
-          .select('liaisons');
-
-        expect(org.liaisons).to.have.lengthOf(1);
+        await checkSavedLiaisons([ PERSON_1_ID ]);
       });
     });
   });
