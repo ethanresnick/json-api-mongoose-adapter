@@ -20,7 +20,11 @@
   },
   "homepage": "https://github.com/ethanresnick/json-api-mongoose-adapter#readme",
   "devDependencies": {
+    "@ethanresnick/tslint-config": "^5.10.3",
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.5",
     "@types/mongoose": "^5.3.5",
+    "chai": "^4.2.0",
     "json-api": "^3.0.0-rc.6.0.1",
     "mocha": "^5.2.0",
     "mongoose": "^4.7.9",
