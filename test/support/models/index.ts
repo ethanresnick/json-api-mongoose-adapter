@@ -1,5 +1,6 @@
 import * as mongoose from 'mongoose';
 
+require('mongoose').Promise = Promise;
 mongoose.connect('mongodb://localhost/json-api-mongoose-adapter-test');
 
 import PersonModel from "./person";
