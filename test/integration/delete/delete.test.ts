@@ -16,7 +16,6 @@ import { DeleteQuery } from 'json-api';
 const { ObjectId } = mongoose.Types;
 const { Organization } = mongoose.models;
 
-
 describe("Deleting resources", () => {
   let adapter: MongooseAdapter;
 
