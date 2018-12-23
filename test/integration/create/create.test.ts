@@ -6,7 +6,7 @@ import '../../support/models';
 import * as mongoose from 'mongoose';
 import MongooseAdapter from '../../../src/MongooseAdapter';
 
-import { PERSON_1_ID } from './create.fixtures';
+import fixtures, { PERSON_1_ID } from './create.fixtures';
 import { clearDatabase, loadFixtures } from '../../support/fixtures';
 
 const { Organization } = mongoose.models;
@@ -21,32 +21,42 @@ describe("Creating resources", () => {
   describe("Valid singular resource with an extra attribute", () => {
     let created;
 
-    before(() => clearDatabase());
-    before(() => loadFixtures({}));
+    const createOrg = async () => {
+      const query = getCreateOrgQuery()
+      return (await adapter.create(query)).created.unwrap();
+    }
 
-    before(async () => {
-      const attrs = {
-        name: 'New Org Name',
-        extra: 'Hello world'
-      };
+    const getCreateOrgQuery = () => {
+      const attrs = { name: 'New Org Name', extra: 'Hello world' };
+      const rels = getLiaisonRel();
+      const resource = getResource(attrs, rels);
 
-      const rels = {
-        liaisons: Relationship.of({
-          data: getToManyLinkage('people', [ PERSON_1_ID ]),
-          owner: { type: 'organizations', path: 'organizations', id: undefined }
-        })
-      };
-      const resource = new Resource('organizations', undefined, attrs, rels);
-      resource.typePath = ['organizations'];
-
-      const query = new CreateQuery({
+      return new CreateQuery({
         type: 'organizations',
         returning: () => ({}),
         catch: () => ({}),
         records: Data.pure(resource as ResourceWithTypePath)
       });
+    };
 
-      created = (await adapter.create(query)).created.unwrap();
+    const getLiaisonRel = () => ({
+      liaisons: Relationship.of({
+        data: getToManyLinkage('people', [ PERSON_1_ID ]),
+        owner: { type: 'organizations', path: 'organizations', id: undefined }
+      })
+    });
+
+    const getResource = (attrs: any, rels: any) => {
+      const resource = new Resource('organizations', undefined, attrs, rels);
+      resource.typePath = ['organizations'];
+      return resource as ResourceWithTypePath;
+    }
+
+    before(() => clearDatabase());
+    before(() => loadFixtures(fixtures));
+
+    before(async () => {
+      created = await createOrg()
     });
 
     it("returns the created resource", () => {
