@@ -4,7 +4,7 @@
   "description": "An adapter for using the json-api library with MongoDB",
   "main": "dist/index.js",
   "scripts": {
-    "test": "NODE_ENV=test mocha --compilers ts:ts-node/register --recursive test/unit/ test/integration/ --full-trace --check-leaks"
+    "test": "NODE_ENV=test mocha --compilers ts:ts-node/register --exit --recursive test/unit/ test/integration/ --full-trace --check-leaks"
   },
   "repository": {
     "type": "git",
