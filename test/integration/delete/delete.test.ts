@@ -24,33 +24,37 @@ describe("Deleting resources", () => {
     adapter = new MongooseAdapter(mongoose.models);
   });
 
+  const deleteResources = async (ids: string | string[]) => {
+    const query = getDeletionQuery(ids);
+    const results = (await adapter.delete(query)).deleted;
+    return results ? results.unwrap() : null;
+  };
+
+  const getDeletionQuery = (ids: string | string[]) => new DeleteQuery({
+    type: 'organizations',
+    ids: Array.isArray(ids) ? ids : [ ids ],
+    isSingular: !Array.isArray(ids),
+    returning: () => ({})
+  });
+
+  const checkRemainingOrgs = async (ids: string[]) => {
+    const orgs = await Organization.find().select('_id');
+    const orgIds = orgs.map(org => org._id.toString()).sort();
+
+    expect(orgIds).to.deep.equal(ids);
+  };
+
   describe("Single resource deletion", () => {
-    const deleteSingleResource = async (id: string) => {
-      const query = getDeletionQuery(id);
-      const results = (await adapter.delete(query)).deleted;
-      return results ? results.unwrap() : null;
-    };
-
-    const getDeletionQuery = (ids: string | string[]) => new DeleteQuery({
-      type: 'organizations',
-      ids: Array.isArray(ids) ? ids : [ ids ],
-      isSingular: true,
-      returning: () => ({})
-    });
-
     describe("Valid singular deletion", () => {
       let deleted;
 
       before(() => clearDatabase());
       before(() => loadFixtures(fixtures));
 
-      before(async () => deleted = await deleteSingleResource(ORG_1_ID))
+      before(async () => deleted = await deleteResources(ORG_1_ID))
 
       it("should remove the resource from the database", async () => {
-        const orgs = await Organization.find(ORG_1_ID).select('_id');
-        const orgIds = orgs.map(org => org._id.toString()).sort();
-
-        expect(orgIds).to.deep.equal([ ORG_2_ID, ORG_3_ID ]);
+        await checkRemainingOrgs([ ORG_2_ID, ORG_3_ID ]);
       });
 
       it("should return the deleted resource", () => {
@@ -64,7 +68,7 @@ describe("Deleting resources", () => {
     describe("Deletion of a resource that does not exist", () => {
       it('should throw a 404 error', async () => {
         try {
-          await deleteSingleResource(ObjectId().toHexString())
+          await deleteResources(ObjectId().toHexString())
         } catch (err) {
           expect(err.status).equal('404');
           return;
@@ -75,59 +79,47 @@ describe("Deleting resources", () => {
     });
   });
 
-  /*
-  describe("Bulk delete", () => {
-    let creationIds;
-    beforeEach(() => {
-      return Promise.all([createSchool(Agent), createSchool(Agent)]).then(schools => {
-        creationIds = schools.map(it => it.id);
+  describe("Bulk resource deletion", () => {
+    describe("Valid deletion", () => {
+      let deleted;
+
+      before(() => clearDatabase());
+      before(() => loadFixtures(fixtures));
+
+      before(async () => deleted = await deleteResources([ ORG_1_ID, ORG_2_ID ]));
+
+      it("should remove the deleted resources from the database", async () => {
+        await checkRemainingOrgs([ ORG_3_ID ]);
+      });
+
+      it("should return the deleted resources", () => {
+        expect(deleted).to.have.lengthOf(2);
+
+        for (const org of deleted) {
+          expect(org.type).to.equal('organizations');
+          expect([ ORG_1_ID, ORG_2_ID ]).to.include(org.id);
+          expect(org.attributes.name).to.exist;
+        }
+
+        expect(deleted[0].id).to.not.equal(deleted[1].id);
       });
     });
 
-    it("should support bulk delete", () => {
-      return Agent.request("DEL", `/schools`)
-        .type("application/vnd.api+json")
-        .send({ data: creationIds.map(id => ({ type: "organizations", id })) })
-        .then(() => {
-          const notFoundPromises =
-            creationIds.map(id =>
-              Agent.request("GET", `/schools/${id}`)
-                .accept("application/vnd.api+json")
-                .then(() => {
-                  throw new Error("shouldn't run");
-                }, err => {
-                  expect(err.response.statusCode).to.equal(404);
-                }));
+    describe("Deletion including IDs of resources that do not exist", () => {
+      let deleted;
 
-          return Promise.all(notFoundPromises);
-        });
-    });
+      before(() => clearDatabase());
+      before(() => loadFixtures(fixtures));
 
-    it("should delete all matching resources, even if some are not found", () => {
-      // First id below doesn't exist; should not trigger a 404 in the bulk case.
-      const idsToDelete = ["56beb8500000000000000000", ...creationIds];
+      before(async () => deleted = await deleteResources([ ORG_1_ID, ObjectId().toHexString() ]));
 
-      return Agent.request("DEL", `/schools`)
-        .type("application/vnd.api+json")
-        .send({ data: idsToDelete.map(id => ({ type: "organizations", id })) })
-        .then((resp) => {
-          expect(resp.status).to.equal(204);
-          return Promise.all(creationIds.map(it => {
-            return Agent.request("GET", `/organizations/${it}`).then(() => {
-              throw new Error("Should not run!");
-            }, (e) => {
-              expect(e.status).to.equal(404);
-            });
-          }));
-        });
+      it("should remove the valid resource from the database", async () => {
+        await checkRemainingOrgs([ ORG_2_ID, ORG_3_ID ]);
+      });
+
+      it("should return the deleted resource", () => {
+        expect(deleted).to.have.lengthOf(1);
+      });
     });
   });
-  */
 });
-
-// function createSchool(Agent) {
-//   return Agent.request("POST", "/schools")
-//     .type("application/vnd.api+json")
-//     .send({ data: VALID_SCHOOL_RESOURCE_NO_ID })
-//     .then(response => response.body.data);
-// }
