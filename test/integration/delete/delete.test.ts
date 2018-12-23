@@ -1,76 +1,81 @@
 import { expect } from "chai";
-import AgentPromise from "../../app/agent";
-import { VALID_SCHOOL_RESOURCE_NO_ID } from "../fixtures/creation";
+
+import fixtures, {
+  ORG_1_ID,
+  ORG_2_ID,
+  ORG_3_ID
+} from './delete.fixtures';
+
+import '../../support/models';
+import * as mongoose from 'mongoose';
+import MongooseAdapter from '../../../src/MongooseAdapter';
+
+import { clearDatabase, loadFixtures } from '../../support/fixtures';
+import { DeleteQuery } from 'json-api';
+
+const { ObjectId } = mongoose.Types;
+const { Organization } = mongoose.models;
+
 
 describe("Deleting resources", () => {
-  let Agent;
-  before(() => AgentPromise.then(A => { Agent = A; }));
+  let adapter: MongooseAdapter;
+
+  before(() => {
+    adapter = new MongooseAdapter(mongoose.models);
+  });
 
   describe("Single resource deletion", () => {
-    let creationId1, creationId2, creationId3;
-    before(() => {
-      return Promise.all([
-        createSchool(Agent).then(school => creationId1 = school.id),
-        createSchool(Agent).then(school => creationId2 = school.id),
-        createSchool(Agent).then(school => creationId3 = school.id)
-      ]);
+    const deleteSingleResource = async (id: string) => {
+      const query = getDeletionQuery(id);
+      const results = (await adapter.delete(query)).deleted;
+      return results ? results.unwrap() : null;
+    };
+
+    const getDeletionQuery = (ids: string | string[]) => new DeleteQuery({
+      type: 'organizations',
+      ids: Array.isArray(ids) ? ids : [ ids ],
+      isSingular: true,
+      returning: () => ({})
     });
 
-    it("should delete a resource by id", () => {
-      return Agent.request("DEL", `/schools/${creationId1}`)
-        .type("application/vnd.api+json")
-        .send()
-        .then(() => {
-          return Agent.request("GET", `/schools/${creationId1}`)
-            .accept("application/vnd.api+json")
-            .then(() => {
-              throw new Error("shouldn't run");
-            }, err => {
-              expect(err.response.statusCode).to.equal(404);
-            });
-        });
+    describe("Valid singular deletion", () => {
+      let deleted;
+
+      before(() => clearDatabase());
+      before(() => loadFixtures(fixtures));
+
+      before(async () => deleted = await deleteSingleResource(ORG_1_ID))
+
+      it("should remove the resource from the database", async () => {
+        const orgs = await Organization.find(ORG_1_ID).select('_id');
+        const orgIds = orgs.map(org => org._id.toString()).sort();
+
+        expect(orgIds).to.deep.equal([ ORG_2_ID, ORG_3_ID ]);
+      });
+
+      it("should return the deleted resource", () => {
+        expect(deleted).to.exist;
+        expect(deleted.type).to.equal('organizations');
+        expect(deleted.id).to.equal(ORG_1_ID);
+        expect(deleted.attributes.name).to.equal('ORGANIZATION 1');
+      });
     });
 
-    it("should not be stymied by `Content-Length: 0`, regardless of Content-Type; see #67", () => {
-      return Promise.all([
-        Agent.request("DEL", `/schools/${creationId2}`)
-          .set("Content-Length", 0)
-          .send()
-          .then(() => {
-            return Agent.request("GET", `/schools/${creationId2}`)
-              .accept("application/vnd.api+json")
-              .then(() => {
-                throw new Error("shouldn't run");
-              }, err => {
-                expect(err.response.statusCode).to.equal(404);
-              });
-          }),
-        Agent.request("DEL", `/schools/${creationId3}`)
-          .set("Content-Length", 0)
-          .type("application/vnd.api+json")
-          .send()
-          .then(() => {
-            return Agent.request("GET", `/schools/${creationId3}`)
-              .accept("application/vnd.api+json")
-              .then(() => {
-                throw new Error("shouldn't run");
-              }, err => {
-                expect(err.response.statusCode).to.equal(404);
-              });
-          })
-      ]);
-    });
+    describe("Deletion of a resource that does not exist", () => {
+      it('should throw a 404 error', async () => {
+        try {
+          await deleteSingleResource(ObjectId().toHexString())
+        } catch (err) {
+          expect(err.status).equal('404');
+          return;
+        }
 
-    it('should return 404 if deleting a resoucrce that doesn\'t exist', () => {
-      return Agent.request("DELETE", "/people/5a5934cfc810949cebeecc33")
-        .then(() => {
-          throw new Error("shoudln't run");
-        }, (err) => {
-          expect(err.status).to.equal(404);
-        })
+        expect.fail('expected deletion to throw');
+      });
     });
   });
 
+  /*
   describe("Bulk delete", () => {
     let creationIds;
     beforeEach(() => {
@@ -117,11 +122,12 @@ describe("Deleting resources", () => {
         });
     });
   });
+  */
 });
 
-function createSchool(Agent) {
-  return Agent.request("POST", "/schools")
-    .type("application/vnd.api+json")
-    .send({ data: VALID_SCHOOL_RESOURCE_NO_ID })
-    .then(response => response.body.data);
-}
+// function createSchool(Agent) {
+//   return Agent.request("POST", "/schools")
+//     .type("application/vnd.api+json")
+//     .send({ data: VALID_SCHOOL_RESOURCE_NO_ID })
+//     .then(response => response.body.data);
+// }
