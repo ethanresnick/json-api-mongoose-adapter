@@ -20,17 +20,20 @@ import {
   AddToRelationshipQuery,
   RemoveFromRelationshipQuery,
   AndExpression,
-  ExpressionSort
+  ExpressionSort,
+  Field as FieldDocumentation,
+  FieldType as FieldTypeDocumentation,
 } from "json-api";
 
 import * as Errors from 'json-api/build/src/util/errors';
-import { ResourceWithTypePath } from 'json-api/build/src/types/Resource';
-import FieldDocumentation from 'json-api/build/src/types/Documentation/Field';
-import FieldTypeDocumentation from 'json-api/build/src/types/Documentation/FieldType';
+
+import { isId as isIdentifier } from 'json-api/build/src/steps/pre-query/parse-query-params';
+
 import RelationshipTypeDocumentation from 'json-api/build/src/types/Documentation/RelationshipType';
 import { SupportedOperators } from 'json-api/build/src/types';
+import { ResourceWithTypePath } from 'json-api/build/src/types/Resource';
+
 import { partition, setDifference, reduceToObject } from 'json-api/build/src/util/misc';
-import { isId as isIdentifier } from 'json-api/build/src/steps/pre-query/parse-query-params';
 import { values as objectValues } from "json-api/build/src/util/objectValueEntries";
 import { getTypeName } from "json-api/build/src/util/naming-conventions";
 
