@@ -20,5 +20,5 @@
     "build",
     "config"
   ],
-  "include": ["typings/index.d.ts", "src/**/*", "test/**/*"]
+  "include": ["src/**/*", "test/**/*"]
 }

@@ -2,9 +2,11 @@
   "name": "@json-api/mongoose-adapter",
   "version": "1.0.0",
   "description": "An adapter for using the json-api library with MongoDB",
-  "main": "dist/index.js",
+  "main": "build/src/MongooseAdapter.js",
   "scripts": {
-    "test": "NODE_ENV=test mocha --compilers ts:ts-node/register --exit --recursive test/unit/ test/integration/ --full-trace --check-leaks"
+    "test": "NODE_ENV=test mocha --compilers ts:ts-node/register --exit --recursive test/unit/ test/integration/ --full-trace --check-leaks",
+    "build": "tsc",
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -34,7 +36,8 @@
     "typescript": "^3.2.2"
   },
   "peerDependencies": {
-    "mongoose": "^4.7.0"
+    "mongoose": "^4.7.0",
+    "json-api": "^3.0.0-rc.6.0.1"
   },
   "dependencies": {
     "pluralize": "0.0.11"
