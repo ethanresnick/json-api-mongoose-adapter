@@ -13,6 +13,7 @@ import {
   ResourceIdentifier,
   Relationship,
   isFieldExpression,
+  isIdentifier,
   CreateQuery,
   FindQuery,
   DeleteQuery,
@@ -26,8 +27,6 @@ import {
 } from "json-api";
 
 import * as Errors from 'json-api/build/src/util/errors';
-
-import { isId as isIdentifier } from 'json-api/build/src/steps/pre-query/parse-query-params';
 
 import RelationshipTypeDocumentation from 'json-api/build/src/types/Documentation/RelationshipType';
 import { SupportedOperators } from 'json-api/build/src/types';
